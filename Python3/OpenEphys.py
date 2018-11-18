@@ -405,7 +405,7 @@ class ProgressBar:
 #*************************************************************
 
 def pack_2(folderpath, filename = '', channels = 'all', chprefix = 'CH', 
-           dref = None, session = '0', source = '100', highpass = 0, fs = 30000):
+           dref = None, session = '0', source = '100', highpass = 0, fs = 30000, connected_channels = None):
 
     '''Alternative version of pack which uses numpy's tofile function to write data.
     pack_2 is much faster than pack and avoids quantization noise incurred in pack due
@@ -446,11 +446,19 @@ def pack_2(folderpath, filename = '', channels = 'all', chprefix = 'CH',
     # apply referencing
     if dref:
         if dref == 'ave':
-            print('Digital referencing to average of all channels.')
-            reference = np.mean(data_array,1)
+            if connected_channels is None:
+                print('Digital referencing to average of all channels.')
+                reference = np.mean(data_array,1)
+            else:
+                print('Digital referencing to average of %i connected channels.' % sum(connected_channels))
+                reference = np.mean(data_array[:,connected_channels],1)
         elif dref=='med':
-            print('Digital referencing to median of all channels.')
-            reference = np.median(data_array,1)
+            if connected_channels is None:
+                print('Digital referencing to median of all channels.')
+                reference = np.median(data_array,1)
+            else:
+                print('Digital referencing to median of %i connected channels.' % sum(connected_channels))
+                reference = np.median(data_array[:,connected_channels],1)
         else:
             print('Digital referencing to channel ' + str(dref))
             if channels == 'all':

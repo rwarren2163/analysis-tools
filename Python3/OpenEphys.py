@@ -19,6 +19,7 @@ import scipy.io
 import time
 import struct
 from copy import deepcopy
+# import ipdb
 
 # constants
 NUM_HEADER_BYTES = 1024
@@ -404,7 +405,7 @@ class ProgressBar:
 #*************************************************************
 
 def pack_2(folderpath, filename = '', channels = 'all', chprefix = 'CH', 
-           dref = None, session = '0', source = '100'):
+           dref = None, session = '0', source = '100', highpass = 0, fs = 30000):
 
     '''Alternative version of pack which uses numpy's tofile function to write data.
     pack_2 is much faster than pack and avoids quantization noise incurred in pack due
@@ -428,12 +429,28 @@ def pack_2(folderpath, filename = '', channels = 'all', chprefix = 'CH',
     
     '''
     
-    data_array = loadFolderToArray(folderpath, channels, chprefix, np.int16, session, source)
+    data_array = loadFolderToArray(folderpath, channels, chprefix, np.int16, session, source) # n_samples X n_channels
     
+    # apply high pass filtering
+    if highpass:
+        print('Filtering dem signals!')
+        
+        # create high pass filter
+        nn, wn = scipy.signal.buttord(highpass*2/fs, highpass*2/fs*0.5, 3, 40)
+        num, denom = scipy.signal.butter(nn, wn, btype='high')
+        
+        # apply filter
+        for i in range(data_array.shape[1]):
+            data_array[:,i] = scipy.signal.filtfilt(num, denom, data_array[:,i])
+
+    # apply referencing
     if dref:
         if dref == 'ave':
             print('Digital referencing to average of all channels.')
             reference = np.mean(data_array,1)
+        elif dref=='med':
+            print('Digital referencing to median of all channels.')
+            reference = np.median(data_array,1)
         else:
             print('Digital referencing to channel ' + str(dref))
             if channels == 'all':
@@ -442,6 +459,9 @@ def pack_2(folderpath, filename = '', channels = 'all', chprefix = 'CH',
         for i in range(data_array.shape[1]):
             data_array[:,i] = data_array[:,i] - reference
     
+    
+    
+
     if session == '0': session = ''
     else: session = '_'+session
     
